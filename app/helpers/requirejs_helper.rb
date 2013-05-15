@@ -65,11 +65,19 @@ module RequirejsHelper
       end
 
       html.concat <<-HTML
-      <script #{_requirejs_data(name, &block)} src="#{_javascript_path 'require.js'}"></script>
+      <script #{_requirejs_data(name, &block)} src="#{requirejs_source_file}"></script>
       HTML
 
       html.html_safe
     end
+  end
+
+  def requirejs_source_file
+    _javascript_path(custom_requirejs_file || 'require.js')
+  end
+
+  def custom_requirejs_file
+    'lib/require.js' if File.exists? "#{Rails.root}/app/assets/javascripts/lib/require.js"
   end
 
   def _once_guard
