@@ -100,6 +100,7 @@ module Requirejs::Rails
     def build_config
       unless self.has_key?(:build_config)
         self[:build_config] = self.run_config.merge("baseUrl" => source_dir.to_s,
+                                                    "optimize" => 'none',
                                                     "modules" => [],
                                                     "packageConfig" => (source_dir + 'lib/require.config').to_s,
                                                     "name" => 'requireLib',

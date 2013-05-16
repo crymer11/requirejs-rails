@@ -109,7 +109,7 @@ EOM
                       "requirejs:test_node"] do
       requirejs.config.target_dir.mkpath
 
-      puts `node "#{requirejs.config.driver_path}"`
+      `node "#{requirejs.config.driver_path}"`
       unless $?.success?
         raise RuntimeError, "Asset compilation with node failed."
       end
@@ -120,9 +120,6 @@ EOM
     task :digestify_and_compress => ["requirejs:setup"] do
 
   def process_asset(asset_name)
-    puts '--------------------'
-    puts asset_name
-    puts '--------------------'
     asset_path = source_asset_path(asset_name)
     if File.directory? asset_path
       asset_path.entries.delete_if { |e| ['.','..'].include? e.to_s }.map { |e| File.join(asset_name, e)}.each { |a| process_asset(a) }

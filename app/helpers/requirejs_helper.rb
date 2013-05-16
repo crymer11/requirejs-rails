@@ -50,7 +50,8 @@ module RequirejsHelper
           paths = {}
 
           Rails.application.config.assets.digests.each do |k,v|
-            paths[strip_dot_js(k)] = strip_dot_js(_javascript_path(v)) if k.match('.js')
+
+            paths[strip_dot_js(k)] = strip_dot_js(_javascript_path(v)) if k.match(/\.js$/) && !k.match('lib')
           end
 
           if run_config.has_key? 'paths'
