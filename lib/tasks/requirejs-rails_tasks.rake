@@ -24,7 +24,9 @@ namespace :requirejs do
     end
   end
 
-  requirejs = ActiveSupport::OrderedOptions.new
+  def requirejs
+    @requirejs ||= ActiveSupport::OrderedOptions.new
+  end
 
   task :clean => ["requirejs:setup"] do
     FileUtils.remove_entry_secure(requirejs.config.source_dir, true)
@@ -107,7 +109,7 @@ EOM
                       "requirejs:test_node"] do
       requirejs.config.target_dir.mkpath
 
-      `node "#{requirejs.config.driver_path}"`
+      puts `node "#{requirejs.config.driver_path}"`
       unless $?.success?
         raise RuntimeError, "Asset compilation with node failed."
       end
@@ -116,21 +118,66 @@ EOM
     # Copy each built asset, identified by a named module in the
     # build config, to its Sprockets digestified name.
     task :digestify_and_compress => ["requirejs:setup"] do
-      requirejs.config.build_config['modules'].each do |m|
-        asset_name = "#{requirejs.config.module_name_for(m)}.js"
-        built_asset_path = requirejs.config.target_dir + asset_name
-        digest_name = asset_name.sub(/\.(\w+)$/) { |ext| "-#{requirejs.builder.digest_for(built_asset_path)}#{ext}" }
-        digest_asset_path = requirejs.config.target_dir + digest_name
-        requirejs.manifest[asset_name] = digest_name
-        FileUtils.cp built_asset_path, digest_asset_path
 
-        # Create the compressed versions
-        File.open("#{built_asset_path}.gz",'wb') do |f|
-          zgw = Zlib::GzipWriter.new(f, Zlib::BEST_COMPRESSION)
-          zgw.write built_asset_path.read
-          zgw.close
-        end
-        FileUtils.cp "#{built_asset_path}.gz", "#{digest_asset_path}.gz"
+  def process_asset(asset_name)
+    puts '--------------------'
+    puts asset_name
+    puts '--------------------'
+    asset_path = source_asset_path(asset_name)
+    if File.directory? asset_path
+      asset_path.entries.delete_if { |e| ['.','..'].include? e.to_s }.map { |e| File.join(asset_name, e)}.each { |a| process_asset(a) }
+    else
+      copy_compress_and_digest_asset(asset_name)
+    end
+  end
+
+  def copy_compress_and_digest_asset(asset_name)
+    copy_asset(asset_name)
+    compress_and_add_digest asset_name
+    requirejs.manifest[asset_name.to_s] = digest_name(asset_name).to_s
+  end
+
+  def copy_asset(asset_name)
+    FileUtils.mkdir_p built_asset_path(asset_name).dirname
+    FileUtils.cp source_asset_path(asset_name), built_asset_path(asset_name)
+  end
+
+  def source_asset_path(asset_name)
+    requirejs.config.source_dir + asset_name
+  end
+
+  def compress_and_add_digest(asset_name)
+    compress_asset built_asset_path(asset_name)
+    add_digest_asset asset_name
+  end
+
+  def add_digest_asset(asset_name)
+    built_asset, digest_asset = built_asset_path(asset_name), digest_path(asset_name)
+    FileUtils.cp built_asset, digest_asset
+    FileUtils.cp "#{built_asset}.gz", "#{digest_asset}.gz"
+  end
+
+  def digest_path(asset_name)
+    requirejs.config.target_dir + digest_name(asset_name)
+  end
+
+  def digest_name(asset_name)
+    asset_name.sub(/\.(\w+)$/) { |ext| "-#{requirejs.builder.digest_for(built_asset_path(asset_name))}#{ext}" }
+  end
+
+  def built_asset_path(asset_name)
+    requirejs.config.target_dir + asset_name
+  end
+
+  def compress_asset(asset_path)
+    File.open("#{asset_path}.gz",'wb') do |f|
+      zgw = Zlib::GzipWriter.new(f, Zlib::BEST_COMPRESSION)
+      zgw.write asset_path.read
+      zgw.close
+    end
+  end
+      requirejs.config.source_dir.entries.delete_if { |e| ['.','..'].include? e.to_s }.each do |asset_name|
+        process_asset(asset_name)
 
         requirejs.config.manifest_path.open('wb') do |f|
           YAML.dump(requirejs.manifest,f)
@@ -144,6 +191,7 @@ EOM
     invoke_or_reboot_rake_task "requirejs:precompile:all"
   end
 end
+
 
 task "assets:precompile" => ["requirejs:precompile:external"]
 if ARGV[0] == "requirejs:precompile:all"

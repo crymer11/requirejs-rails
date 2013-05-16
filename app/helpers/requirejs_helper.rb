@@ -23,6 +23,10 @@ module RequirejsHelper
     end.join(" ")
   end
 
+  def strip_dot_js(string)
+    string.sub( /\.js$/,'')
+  end
+
   def requirejs_include_tag(name=nil, &block)
     requirejs = Rails.application.config.requirejs
 
@@ -42,11 +46,12 @@ module RequirejsHelper
           run_config[:priority].concat _priority
         end
         if Rails.application.config.assets.digest
-          modules = requirejs.build_config['modules'].map { |m| requirejs.module_name_for m }
-
           # Generate digestified paths from the modules spec
           paths = {}
-          modules.each { |m| paths[m] = _javascript_path(m).sub /\.js$/,'' }
+
+          Rails.application.config.assets.digests.each do |k,v|
+            paths[strip_dot_js(k)] = strip_dot_js(_javascript_path(v)) if k.match('.js')
+          end
 
           if run_config.has_key? 'paths'
             # Add paths for assets specified by full URL (on a CDN)

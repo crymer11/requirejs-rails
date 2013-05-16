@@ -1,6 +1,7 @@
 require 'requirejs/rails'
 require 'requirejs/error'
 
+require 'json'
 require 'active_support/ordered_options'
 require 'erubis'
 require 'pathname'
@@ -13,7 +14,7 @@ module Requirejs::Rails
       super
       self.manifest = nil
 
-      self.logical_asset_filter = [/\.js$/,/\.html$/,/\.txt$/]
+      self.logical_asset_filter = [/\.js$/,/\.json$/,/\.html$/,/\.txt$/]
       self.tmp_dir = Rails.root + 'tmp'
       self.bin_dir = Pathname.new(__FILE__+'/../../../../bin').cleanpath
 
@@ -73,6 +74,7 @@ module Requirejs::Rails
         optimizeAllPluginResources
         optimizeCss
         out
+        packageConfig
         packagePaths
         packages
         paths
@@ -97,11 +99,18 @@ module Requirejs::Rails
 
     def build_config
       unless self.has_key?(:build_config)
-        self[:build_config] = self.run_config.merge "baseUrl" => source_dir.to_s,
-                                                    "modules" => [ { 'name' => 'application' } ]
+        self[:build_config] = self.run_config.merge("baseUrl" => source_dir.to_s,
+                                                    "modules" => [],
+                                                    "packageConfig" => (source_dir + 'lib/require.config').to_s,
+                                                    "name" => 'requireLib',
+                                                    "include" => ['lib/require.config'] + included_packages,
+                                                    "paths" => { "requireLib" => (source_dir+'require').to_s },
+                                                    "out" => (source_dir+'lib/require.js').to_s
+                                                   )
+
         self[:build_config].merge!(self.user_config).slice!(*self.build_config_whitelist)
         case self.loader
-        when :requirejs 
+        when :requirejs
           # nothing to do
         when :almond
           mods = self[:build_config]['modules']
@@ -115,6 +124,11 @@ module Requirejs::Rails
         end
       end
       self[:build_config]
+    end
+
+    def included_packages
+      lib_dir = File.join source_dir, 'lib'
+      Dir.entries(lib_dir).keep_if { |dir| File.directory?(File.join(lib_dir, dir)) && !['.','..'].include?(dir) }.map { |dir| JSON.parse(File.read(File.join(lib_dir, dir, 'package.json')))['name'] }
     end
 
     def run_config
