@@ -165,9 +165,7 @@ module Requirejs::Rails
     end
 
     def asset_allowed?(asset)
-      self.logical_asset_filter.reduce(false) do |accum, matcher|
-        accum || (matcher =~ asset)
-      end ? true : false
+      self.logical_asset_filter.any? { |matcher| matcher =~ asset }
     end
   end
 end
