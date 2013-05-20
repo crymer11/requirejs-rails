@@ -83,7 +83,7 @@ module RequirejsHelper
   end
 
   def custom_requirejs_file
-    'lib/require.js' if File.exists? "#{Rails.root}/app/assets/javascripts/lib/require.js"
+    'lib/require.js' if File.exists?("#{Rails.root}/app/assets/javascripts/lib/require.js") || File.exists?("#{Rails.root}/vendor/assets/javascripts/lib/require.js")
   end
 
   def _once_guard
