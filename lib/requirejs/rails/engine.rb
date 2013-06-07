@@ -19,7 +19,7 @@ module Requirejs
         # environment-specific configuration can be injected into the user configuration file
         process_user_config_file(app, config)
 
-        config.assets.precompile = [/.\.css$/]
+        config.assets.precompile = [/.\.css$/, /.\.ico$/, /.\.png$/, /.\.jpg$/, /.\.jpeg$/, /.\.gif$/]
 
         manifest_directory = config.assets.manifest || File.join(::Rails.public_path, config.assets.prefix)
         manifest_path      = File.join(manifest_directory, "rjs_manifest.yml")
